@@ -1,0 +1,40 @@
+name: Deploy to Staging (app-britedge-uks)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: ./britedgeapp   # our project folder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore ./britedgeapp.csproj
+
+      - name: Build (Release)
+        run: dotnet build ./britedgeapp.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish ./britedgeapp.csproj -c Release -o "${{ runner.temp }}\\publish" --no-build
+
+      - name: Deploy to Azure Web App (staging)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: app-britedge-uks
+          slot-name: staging
+          package: "${{ runner.temp }}\\publish"
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_STAGING }}
